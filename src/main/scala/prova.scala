@@ -1,3 +1,4 @@
+import it.unibo.alchemist.model.interfaces.Node
 import it.unibo.alchemist.model.scafi.ScafiIncarnationForAlchemist._
 
 class prova extends AggregateProgram with FieldUtils with StandardSensors with ScafiAlchemistSupport {
@@ -22,31 +23,58 @@ class prova extends AggregateProgram with FieldUtils with StandardSensors with S
     }
   }
 
+  /*
+  4. muoversi verso il vicino che ha meno vicini
+  5. muoversi lontano dal vicino che ha più vicini
+  6. combinare gli ultimi due punti: ogni device è attratto dal vicino con meno vicini, e respinto dal vicino con più vicini.
+  */
+
+  /*Per muovere un device, bisogna memorizzare una posizione List(x,y) nella molecola target: node.put("target", ...);
+  Sostituite la porzione di codice che ora si occupa del movimento con quanto richiesto.
+  Si può ottenere la posizione corrente di un device tramite il metodo getCoordinates().*/
+
+  /*Nei primi esercizi, ragionate dove usare nbr ("guardo i vicini") e rep ("guardo il passato").*/
+
   override def main(): Any = {
     node.put("language", "scafi")
-
+    val actualNode: Node[Any] = alchemistEnvironment.getNodeByID(mid)
     // la sorgente e' il nodo 0 (fermo nel mezzo)
     val sourceID = 0
     val isSource = mid == sourceID
 
     // salvo la stima di distanza e quella esatta
-    node.put("distance", alchemistEnvironment.getDistanceBetweenNodes(alchemistEnvironment.getNodeByID(mid), alchemistEnvironment.getNodeByID(sourceID))) // esatta
+    node.put("distance", alchemistEnvironment.getDistanceBetweenNodes(actualNode, alchemistEnvironment.getNodeByID(sourceID))) // esatta
     node.put("gradient", gradient(isSource, nbrRange)) // stima
 
     // determino un tempo in cui iniziare a muovermi a caso tra 0 e 200
     val timeToGo = constant(200 * nextRandom())
     node.put("timeToGo", timeToGo)
 
+    // VICINO CON MENO VICINI
+    val neighbors = getNodeNeighbors(actualNode)
+
+    def minNeighbors(e1: Node[Any], e2: Node[Any]): Node[Any] = if (getNodeNeighbors(e1).length < getNodeNeighbors(e2).length) e1 else e2
+    def maxNeighbors(e1: Node[Any], e2: Node[Any]): Node[Any] = if (getNodeNeighbors(e1).length > getNodeNeighbors(e2).length) e1 else e2
+
+    val minNbr = neighbors.reduceLeft(minNeighbors)
+    val maxNbr = neighbors.reduceLeft(maxNeighbors)
+
     // determino un luogo in cui muovermi, se e' il momento di farlo
     branch(timestamp() < timeToGo){
       // non e' ancora ora, e non faccio nulla
+      println("non mi sposto")
     } {
-      // scelgo un obiettivo a caso tra [-4,-2] e [4,2]
+      // SPOSTAMENTO
+      println("mi sposto")
       val target = constant(List(8*nextRandom()-4, 4*nextRandom()-2))
       node.put("target", target)
     }
 
     0
+  }
+
+  def getNodeNeighbors(actualNode: Node[Any])={
+    alchemistEnvironment.getNeighborhood(actualNode).getNeighbors.toArray(Node[Any])
   }
 
   // Crea una coppia
