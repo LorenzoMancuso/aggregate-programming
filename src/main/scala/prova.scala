@@ -35,13 +35,28 @@ class prova extends AggregateProgram with FieldUtils with StandardSensors with S
 
   /*Nei primi esercizi, ragionate dove usare nbr ("guardo i vicini") e rep ("guardo il passato").*/
 
+  // rep: supports dynamically evolving fields by having an expression e depend on its previous value w (with x being the initial state).
+  // rep x w e
+  def evaluateMaxOfDevice(numberOfNeighbors: Int) = {
+    rep(Int.MinValue) { maxNumberOfNeighbors => max(maxNumberOfNeighbors, numberOfNeighbors) }
+  }
+
+  //  nbr: gathers a map at each device (actually, a field) from all neighbors
+  // (including itself) to their latest value of s. Built-in“hood” functions then
+  // summarize such maps, e.g., min-hood(m) finds the minimum value in map m
+  // (excluding the value associated to the device itself)
+  def evaluateMaxOfNetwork(maxNumberOfNeighbors: Int) = {
+    rep(Int.MinValue) { maxNum =>
+      maxHood{ nbr{max(maxNum, maxNumberOfNeighbors)} }
+    }
+  }
+
   override def main(): Any = {
     node.put("language", "scafi")
     val actualNode: Node[Any] = alchemistEnvironment.getNodeByID(mid)
     // la sorgente e' il nodo 0 (fermo nel mezzo)
     val sourceID = 0
     val isSource = mid == sourceID
-
     // salvo la stima di distanza e quella esatta
     node.put("distance", alchemistEnvironment.getDistanceBetweenNodes(actualNode, alchemistEnvironment.getNodeByID(sourceID))) // esatta
     node.put("gradient", gradient(isSource, nbrRange)) // stima
@@ -50,22 +65,30 @@ class prova extends AggregateProgram with FieldUtils with StandardSensors with S
     val timeToGo = constant(200 * nextRandom())
     node.put("timeToGo", timeToGo)
 
+    // NUMERO DI DEVICE VICINI
+    var numberOfNeighbors = alchemistEnvironment.getNeighborhood(actualNode).size()
+    node.put("numberOfNeighbors", numberOfNeighbors)
+
+    // MASSIMO NUMERO DI DEVICE VICINI PER IL NODO ATTUALE
+    node.put("maxNumberOfNeighbors", evaluateMaxOfDevice(numberOfNeighbors))
+
+    // MASSIMO NUMERO DI DEVICE VICINI DELLA RETE
+    node.put("maxNumberOfNeighborsInNetwork", evaluateMaxOfNetwork(numberOfNeighbors))
+
     // VICINO CON MENO VICINI
-    val neighbors = getNodeNeighbors(actualNode)
+    /*val neighbors = getNodeNeighbors(actualNode)
 
     def minNeighbors(e1: Node[Any], e2: Node[Any]): Node[Any] = if (getNodeNeighbors(e1).length < getNodeNeighbors(e2).length) e1 else e2
     def maxNeighbors(e1: Node[Any], e2: Node[Any]): Node[Any] = if (getNodeNeighbors(e1).length > getNodeNeighbors(e2).length) e1 else e2
 
     val minNbr = neighbors.reduceLeft(minNeighbors)
-    val maxNbr = neighbors.reduceLeft(maxNeighbors)
+    val maxNbr = neighbors.reduceLeft(maxNeighbors)*/
 
     // determino un luogo in cui muovermi, se e' il momento di farlo
     branch(timestamp() < timeToGo){
       // non e' ancora ora, e non faccio nulla
-      println("non mi sposto")
     } {
       // SPOSTAMENTO
-      println("mi sposto")
       val target = constant(List(8*nextRandom()-4, 4*nextRandom()-2))
       node.put("target", target)
     }
@@ -73,9 +96,9 @@ class prova extends AggregateProgram with FieldUtils with StandardSensors with S
     0
   }
 
-  def getNodeNeighbors(actualNode: Node[Any])={
+  /*def getNodeNeighbors(actualNode: Node[Any])={
     alchemistEnvironment.getNeighborhood(actualNode).getNeighbors.toArray(Node[Any])
-  }
+  }*/
 
   // Crea una coppia
   def pair[A,B](x : A, y : B) : Tuple2[A,B] = {
