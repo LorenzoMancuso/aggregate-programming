@@ -65,40 +65,60 @@ class prova extends AggregateProgram with FieldUtils with StandardSensors with S
     val timeToGo = constant(200 * nextRandom())
     node.put("timeToGo", timeToGo)
 
-    // NUMERO DI DEVICE VICINI
-    var numberOfNeighbors = alchemistEnvironment.getNeighborhood(actualNode).size()
+    // 1. NUMERO DI DEVICE VICINI
+    var numberOfNeighbors = getNeighborsNumber(actualNode)
     node.put("numberOfNeighbors", numberOfNeighbors)
 
-    // MASSIMO NUMERO DI DEVICE VICINI PER IL NODO ATTUALE
+    // 2. MASSIMO NUMERO DI DEVICE VICINI PER IL NODO ATTUALE
     node.put("maxNumberOfNeighbors", evaluateMaxOfDevice(numberOfNeighbors))
 
-    // MASSIMO NUMERO DI DEVICE VICINI DELLA RETE
+    // 3. MASSIMO NUMERO DI DEVICE VICINI DELLA RETE
     node.put("maxNumberOfNeighborsInNetwork", evaluateMaxOfNetwork(numberOfNeighbors))
 
-    // VICINO CON MENO VICINI
-    /*val neighbors = getNodeNeighbors(actualNode)
+    // 4-5-6. VICINO CON MENO VICINI e SPOSTAMENTO
+    val neighbors = getNodeNeighbors(actualNode)
 
-    def minNeighbors(e1: Node[Any], e2: Node[Any]): Node[Any] = if (getNodeNeighbors(e1).length < getNodeNeighbors(e2).length) e1 else e2
-    def maxNeighbors(e1: Node[Any], e2: Node[Any]): Node[Any] = if (getNodeNeighbors(e1).length > getNodeNeighbors(e2).length) e1 else e2
+    var min = Double.PositiveInfinity
+    var max = 0
+    var minNbr: Node[Any] = null
+    var maxNbr: Node[Any] = null
 
-    val minNbr = neighbors.reduceLeft(minNeighbors)
-    val maxNbr = neighbors.reduceLeft(maxNeighbors)*/
+    neighbors.forEach(e => {
+      val tmp = getNeighborsNumber(e)
+      if (tmp < min){
+        min = tmp
+        minNbr = e
+      } else if (tmp > max) {
+        max = tmp
+        maxNbr = e
+      }
+    })
 
     // determino un luogo in cui muovermi, se e' il momento di farlo
     branch(timestamp() < timeToGo){
       // non e' ancora ora, e non faccio nulla
     } {
       // SPOSTAMENTO
-      val target = constant(List(8*nextRandom()-4, 4*nextRandom()-2))
+      // val target = constant(List(8*nextRandom()-4, 4*nextRandom()-2))
+      val move = if (minNbr != null) getNodeCoordinates(minNbr) else List(8*nextRandom()-4, 4*nextRandom()-2)
+      val target = constant(move)
       node.put("target", target)
     }
-
     0
   }
 
-  /*def getNodeNeighbors(actualNode: Node[Any])={
-    alchemistEnvironment.getNeighborhood(actualNode).getNeighbors.toArray(Node[Any])
-  }*/
+  def getNeighborsNumber(actualNode: Node[Any]): Int = {
+    alchemistEnvironment.getNeighborhood(actualNode).size()
+  }
+
+  def getNodeNeighbors(actualNode: Node[Any])={
+    alchemistEnvironment.getNeighborhood(actualNode).getNeighbors
+  }
+
+  // Coordinate correnti come lista di due Double
+  def getNodeCoordinates(actualNode: Node[Any]): List[Double] = {
+    alchemistEnvironment.getPosition(actualNode).getCartesianCoordinates.toList
+  }
 
   // Crea una coppia
   def pair[A,B](x : A, y : B) : Tuple2[A,B] = {
@@ -129,4 +149,5 @@ class prova extends AggregateProgram with FieldUtils with StandardSensors with S
   def getCoordinates(): List[Double] = {
     alchemistEnvironment.getPosition(alchemistEnvironment.getNodeByID(mid)).getCartesianCoordinates.toList
   }
+
 }
