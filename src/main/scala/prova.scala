@@ -1,5 +1,6 @@
 import it.unibo.alchemist.model.interfaces.Node
 import it.unibo.alchemist.model.scafi.ScafiIncarnationForAlchemist._
+import org.apache.lucene.queries.function.valuesource.DoubleConstValueSource
 
 class prova extends AggregateProgram with FieldUtils with StandardSensors with ScafiAlchemistSupport {
 
@@ -99,12 +100,27 @@ class prova extends AggregateProgram with FieldUtils with StandardSensors with S
       // non e' ancora ora, e non faccio nulla
     } {
       // SPOSTAMENTO
-      // val target = constant(List(8*nextRandom()-4, 4*nextRandom()-2))
-      val move = if (minNbr != null) getNodeCoordinates(minNbr) else List(8*nextRandom()-4, 4*nextRandom()-2)
-      val target = constant(move)
+      val randomTarget = constant(List(8*nextRandom()-4, 4*nextRandom()-2))
+
+      // es 4
+      val moveTowardsMin = if (minNbr != null) getNodeCoordinates(minNbr) else randomTarget
+
+      // es 5
+      val moveAwayMax = if (maxNbr != null) getNodeCoordinates(maxNbr) else randomTarget
+      moveAwayMax.map( _ * -1)
+
+      // es 6
+      val meanTarget = List(getMean(moveTowardsMin(0), moveAwayMax(0)), getMean(moveTowardsMin(1), moveAwayMax(1)))
+
+      // change target parameter in constant method for override the moving
+      val target = constant(moveTowardsMin)
       node.put("target", target)
     }
     0
+  }
+
+  def getMean(x: Double, y: Double): Double = {
+    (x + y) / 2
   }
 
   def getNeighborsNumber(actualNode: Node[Any]): Int = {
